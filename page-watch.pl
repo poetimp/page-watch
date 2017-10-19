@@ -168,12 +168,12 @@ while (($nick,$page) = each(%pageList))
             $emailTo = $notifyList{'default'};
          }
 
-         $mail{'Smpt'}         = $smtpServer;
-         $mail{'To'}           = $emailTo;
-         $mail{'From'}         = $emailFrom;
-         $mail{'Subject'}      = 'Page Changed';
+         $mail{'SMTP'}         = $smtpServer;
+         $mail{'TO'}           = $emailTo;
+         $mail{'FROM'}         = $emailFrom;
+         $mail{'SUBJECT'}      = "Page Changed: $nick";
          $mail{'CONTENT-TYPE'} = 'text/html; charset="us-ascii"';
-         $mail{'Message'}      = '<html><body><font face="Arial">'
+         $mail{'MESSAGE'}      = '<html><body><font face="Arial">'
                                  .'<h1>Page Watcher Notification</h1>'
                                  .'<b>The page you are watching has changed: </b>'
                                  ."<a href=\"$page\">$nick</a>"
