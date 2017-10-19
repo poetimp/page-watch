@@ -50,7 +50,7 @@
 #   handy for eliminating pge hit counter.
 #
 # 10/19/2017
-# - Ignore now removes the text so that it does not participate in the comparison 
+# - Ignore now removes the text so that it does not participate in the comparison
 #------------------------------------------------------------------------------------------
 
 use WWW::Mechanize;
