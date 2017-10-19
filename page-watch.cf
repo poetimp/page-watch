@@ -1,0 +1,55 @@
+#====================================================================================================
+# This file must be in ~/.page-watch.cf to be found by default. Otherwise it must be identified on the
+# command line: page-watch.pl -cf=/my/path/to/this/file.cf
+#====================================================================================================
+# Global definitons:
+#    Where is the base directory for all of the cache files to be stored,
+#    Where smtp server is and who should the message say it is from.
+#====================================================================================================
+pageDB     = /home/YOURID/.page-watch-cache
+smtpServer = your.smtp.com
+emailFrom  = PageWatcher@tmcaz.com
+
+#====================================================================================================
+# In the page entries, if one of the optional parameters is omitted, what should be used?
+#====================================================================================================
+
+default
+   watchType=page
+   notify=your.email@your.com
+
+#====================================================================================================
+# List all of the pages that are to be watched and assign them a nick name
+#====================================================================================================
+
+#---------------------------------------------+-----------------------------------------------------+
+#Sample entry:                                | None of the key words are case sensitive            |
+#                                             |                                                     |
+#page=mypage                                  | Must start in column 1                              |
+#   address = http://www.my.page/index.html   | Must not start in column 1                          |
+#   watchType=page                            |  Optional. If omitted use "Default"                 |
+#   notify=me@my.com                          |  Optional. If omitted use "Default"                 |
+#                                             | Blank line to end stanza                            |
+#                                             |                                                     |
+#---------------------------------------------+-----------------------------------------------------+
+# watchType may be one of the following:                                                            |
+#   page   - to examine the whole page for changes                                                  |
+#   links  - to only examine the links on the page for updates                                      |
+#   headers - to only examine the headers for update (not very useful)                              |
+#---------------------------------------------+-----------------------------------------------------+
+
+page=nmon
+   address=http://www.ibm.com/developerworks/wikis/display/WikiPtype/nmon
+   watchType=links
+
+page=putty
+   address = http://www.putty.nl/download.html
+
+page=ltcsw
+   address = http://www.ltcsw.org
+
+page=pv
+   address = http://www.paloverdechurch.org
+
+page=KubuntuAnnounce
+   address = http://www.kubuntu.org/announcements/
