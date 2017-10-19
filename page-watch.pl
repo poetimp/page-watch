@@ -48,6 +48,9 @@
 # 10/29/2014
 # - Added option in cf file to ignore strings specified by a regular expression. This is
 #   handy for eliminating pge hit counter.
+#
+# 10/19/2017
+# - Ignore now removes the text so that it does not participate in the  
 #------------------------------------------------------------------------------------------
 
 use WWW::Mechanize;
@@ -473,6 +476,6 @@ sub removeIgnoredStrings($$)
    my $str = shift;
    my $pat = shift;
 
-   $str =~ s/$pat/**EXPLICITLY IGNORED**/g;
+   $str =~ s/$pat//g;
    return $str;
 }
