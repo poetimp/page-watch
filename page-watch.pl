@@ -23,7 +23,7 @@
 #------------------------------------------------------------------------------------------
 #
 # - Add a real configuration file (done 10/11/06)
-# - consider how to user "last-mdified' server request
+# - consider how to use "last-mdified' server request
 #
 #------------------------------------------------------------------------------------------
 #  C H A N G E   H I S T O R Y
@@ -37,10 +37,15 @@
 # 10/11/2006
 # - Added configuration file support
 # - Added "strict" to keep me honest with variables and force me to comment them
+#
+# 10/17/2014
+# - Added the htmlonly watch type that will only look at html, ignoring scrpts and styles
+# - Added error reporting on URLs that were not successfully retrieved
 #------------------------------------------------------------------------------------------
 
 use WWW::Mechanize;
 use Mail::Sendmail;
+use HTML::Scrubber;
 use strict;
 
 #====================================================================================================
@@ -49,6 +54,7 @@ use strict;
 sub write_page_data($);
 sub get_headers($);
 sub loadConfiguration($);
+sub removeCode($);
 
 #====================================================================================================
 # Global Variables
@@ -115,6 +121,7 @@ while (($nick,$page) = each(%pageList))
 
    $mech = WWW::Mechanize->new(autocheck => 1,
                                quiet     => 1,
+                               onerror   => undef,
                               );
 
    #================================================
@@ -137,62 +144,80 @@ while (($nick,$page) = each(%pageList))
    # Get the page contents
    #================================================
    $lwp     = $mech->get($page);
-
-   #================================================
-   # If the cache file already exists then compare
-   #================================================
-   if (-e "$cacheFile")
+   if ($mech->success())
    {
-      print "Checking $nick against currently cached page information... ";
-
-      write_page_data($testFile);
-
-      $diff = `diff $testFile $cacheFile`;
-      if ($? == 0)
+      #================================================
+      # If the cache file already exists then compare
+      #================================================
+      if (-e "$cacheFile")
       {
-         print "Files are identical\n";
-         unlink("$testFile");
-      }
-      else
-      {
-         print "Files are different\n";
-         chomp($now = `date +%m%d%y-%H%M`);
-         rename($cacheFile,$cacheFile."-$now") or die "Unable to rename cache file: $!\n";
-         rename($testFile ,$cacheFile)         or die "Unable to rename html file: $!\n";
-         if (defined($notifyList{$nick}))
+         print "Checking $nick against currently cached page information... ";
+
+         write_page_data($testFile);
+
+         $diff = `diff $testFile $cacheFile`;
+         if ($? == 0)
          {
-            $emailTo = $notifyList{$nick};
+            print "Files are identical\n";
+            unlink("$testFile");
          }
          else
          {
-            $emailTo = $notifyList{'default'};
-         }
+            print "Files are different\n";
+            chomp($now = `date +%m%d%y-%H%M`);
+            rename($cacheFile,$cacheFile."-$now") or die "Unable to rename cache file: $!\n";
+            rename($testFile ,$cacheFile)         or die "Unable to rename html file: $!\n";
+            if (defined($notifyList{$nick}))
+            {
+               $emailTo = $notifyList{$nick};
+            }
+            else
+            {
+               $emailTo = $notifyList{'default'};
+            }
 
-         $mail{'SMTP'}         = $smtpServer;
-         $mail{'TO'}           = $emailTo;
-         $mail{'FROM'}         = $emailFrom;
-         $mail{'SUBJECT'}      = "Page Changed: $nick";
-         $mail{'CONTENT-TYPE'} = 'text/html; charset="us-ascii"';
-         $mail{'MESSAGE'}      = '<html><body><font face="Arial">'
-                                 .'<h1>Page Watcher Notification</h1>'
-                                 .'<b>The page you are watching has changed: </b>'
-                                 ."<a href=\"$page\">$nick</a>"
-                                 .'</font>'
-                                 .'<p><pre>'.$diff.'</pre></p>'
-                                 .'</body></html>';
-         (sendmail %mail) || print "Send failed: $Mail::Sendmail::error\n";
+            $mail{'SMTP'}         = $smtpServer;
+            $mail{'TO'}           = $emailTo;
+            $mail{'FROM'}         = $emailFrom;
+            $mail{'SUBJECT'}      = "Page Changed: $nick";
+            $mail{'CONTENT-TYPE'} = 'text/html; charset="us-ascii"';
+            $mail{'MESSAGE'}      = '<html><body><font face="Arial">'
+                                    .'<h1>Page Watcher Notification</h1>'
+                                    .'<b>The page you are watching has changed: </b>'
+                                    ."<a href=\"$page\">$nick</a>"
+                                    .'</font>'
+                                    .'<p><pre>'.$diff.'</pre></p>'
+                                    .'</body></html>';
+            (sendmail %mail) || print "Send failed: $Mail::Sendmail::error\n";
+         }
+      }
+      #================================================
+      # If cache file does not exist then simply create
+      # it. The next time this program runs it will be
+      # used to compare against.
+      #================================================
+      else
+      {
+         write_page_data($cacheFile);
+
+         print "Successfully performed initial cache of $nick web page\n";
       }
    }
-   #================================================
-   # If cache file does not exist then simply create
-   # it. The next time this program runs it will be
-   # used to compare against.
-   #================================================
    else
    {
-      write_page_data($cacheFile);
-
-      print "Successfully performed initial cache of $nick web page\n";
+      $mail{'SMTP'}         = $smtpServer;
+      $mail{'TO'}           = $emailTo;
+      $mail{'FROM'}         = $emailFrom;
+      $mail{'SUBJECT'}      = "Page Error: $nick";
+      $mail{'CONTENT-TYPE'} = 'text/html; charset="us-ascii"';
+      $mail{'MESSAGE'}      = '<html><body><font face="Arial">'
+                              .'<h1>Page Watcher Notification</h1>'
+                              .'<b>The page you are watching had errors : </b>'
+                              ."<a href=\"$page\">$nick</a>"
+                              .'</font>'
+                              .'<p><pre>'.$lwp->status_line.'</pre></p>'
+                              .'</body></html>';
+      (sendmail %mail) || print "Send failed: $Mail::Sendmail::error\n";
    }
 }
 #====================================================================================================
@@ -210,7 +235,8 @@ sub write_page_data($)
    my $url;                # The URL
    my %urlList;            # The array if URL's
 
-   open  (DAT,">$fileName") or die "Unable to open cache file $fileName, $!\n";
+   open   (DAT,">$fileName") or die "Unable to open cache file $fileName, $!\n";
+   binmode(DAT,":utf8"); # Eliminates the "Wide character in print" warninig
 
    #================================================
    # Write only the unique links to file. Sort them
@@ -246,6 +272,13 @@ sub write_page_data($)
       {
          print DAT "$url\n";
       }
+   }
+   #================================================
+   # Doing the whole page? That is just too easy
+   #================================================
+   elsif ($watchType =~ /htmlonly/i)
+   {
+      print  DAT removeCode($mech->content);
    }
    #================================================
    # Doing the whole page? That is just too easy
@@ -344,8 +377,6 @@ sub loadConfiguration($)
          $option = $1;
          $value  = $2;
 
-         $option =~ tr/A-Z/a-z/;
-
          if ($option =~ /address/i)
          {
             $pageList{$pageName}=$value;
@@ -400,4 +431,19 @@ sub loadConfiguration($)
    if (!defined($notifyList{'default'}))    {die "Required option of default \"notify\" not found!\n";      }
    if (!defined($watchTypeList{'default'})) {die "Required option of default \"watchType\" not found!\n";   }
    if (keys(%pageList) <= 0)                {die "No pages defined in configuration file";                  }
+}
+#===================================================================================
+# Subroutine to remove script and style code
+#===================================================================================
+
+sub removeCode($) 
+{
+my $html = shift;
+
+   my $scrubber = HTML::Scrubber->new;
+   $scrubber->default(1); ## default to allow HTML
+   $scrubber->script(0);  ## no script
+   $scrubber->style(0);   ## no style
+
+   return $scrubber->scrub($html)
 }

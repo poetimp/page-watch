@@ -33,9 +33,10 @@ default
 #                                             |                                                     |
 #---------------------------------------------+-----------------------------------------------------+
 # watchType may be one of the following:                                                            |
-#   page   - to examine the whole page for changes                                                  |
-#   links  - to only examine the links on the page for updates                                      |
-#   headers - to only examine the headers for update (not very useful)                              |
+#   page     - to examine the whole page for changes                                                |
+#   htmlonly - to only examine the html potion of the page, ignoring scripts and styles             |
+#   links    - to only examine the links on the page for updates                                    |
+#   headers  - to only examine the headers for update (not very useful)                             |
 #---------------------------------------------+-----------------------------------------------------+
 
 page=nmon
@@ -44,6 +45,7 @@ page=nmon
 
 page=putty
    address = http://www.putty.nl/download.html
+   watchType=htmlonly
 
 page=ltcsw
    address = http://www.ltcsw.org
