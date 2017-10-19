@@ -6,8 +6,8 @@
 #    Where is the base directory for all of the cache files to be stored,
 #    Where smtp server is and who should the message say it is from.
 #====================================================================================================
-pageDB     = /home/YOURID/.page-watch-cache
-smtpServer = your.smtp.com
+pageDB     = /home/tspdlp/code/perl/page-watch
+smtpServer = mail.tmcaz.com
 emailFrom  = PageWatcher@tmcaz.com
 
 #====================================================================================================
@@ -16,7 +16,7 @@ emailFrom  = PageWatcher@tmcaz.com
 
 default
    watchType=page
-   notify=your.email@your.com
+   notify=paul.lemmons@tmcaz.com
 
 #====================================================================================================
 # List all of the pages that are to be watched and assign them a nick name
@@ -29,29 +29,31 @@ default
 #   address = http://www.my.page/index.html   | Must not start in column 1                          |
 #   watchType=page                            |  Optional. If omitted use "Default"                 |
 #   notify=me@my.com                          |  Optional. If omitted use "Default"                 |
+#   ignore-regex = value='\d+'                |  optional. If omitted there is no default           |
 #                                             | Blank line to end stanza                            |
 #                                             |                                                     |
 #---------------------------------------------+-----------------------------------------------------+
 # watchType may be one of the following:                                                            |
 #   page     - to examine the whole page for changes                                                |
-#   htmlonly - to only examine the html potion of the page, ignoring scripts and styles             |
 #   links    - to only examine the links on the page for updates                                    |
 #   headers  - to only examine the headers for update (not very useful)                             |
+#   htmlonly - to strip out all javascript and the like                                             |
+#                                                                                                   |
 #---------------------------------------------+-----------------------------------------------------+
 
+# Examples
+
+# Watch only links that might change. Ignore all other changes
 page=nmon
    address=http://www.ibm.com/developerworks/wikis/display/WikiPtype/nmon
    watchType=links
 
-page=putty
-   address = http://www.putty.nl/download.html
-   watchType=htmlonly
-
-page=ltcsw
-   address = http://www.ltcsw.org
-
-page=pv
-   address = http://www.paloverdechurch.org
-
+# Take all the defaults
 page=KubuntuAnnounce
    address = http://www.kubuntu.org/announcements/
+
+# This page has a reference counter on it. Ignore it
+page=ClearToyCandy
+   address=http://www.clearcandy.com/item/Clear-Toy-Candy-Pieces-5
+   ignore-regex = value='\d+'
+

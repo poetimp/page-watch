@@ -7,7 +7,7 @@ that is being watch has been changed.
 The script is unique in a couple respects. The first is that it uses a 
 configuration file to identify the pages to be watched. This configuration 
 file allows for default values to be established and to permit overrides of 
-the defaults on a page by page basis. For example. If you want to get notifed 
+the defaults on a page by page basis. For example. If you want to get notified 
 at work for most updates you can set the default to notify your work email 
 address. But if there is a page that is of interest to someone else, you can 
 override the email notification address for that particular page.
@@ -15,8 +15,19 @@ override the email notification address for that particular page.
 The program is also unique in that it can watch only the links on a page for 
 change instead of the whole page. This is very useful for sites that contain 
 both dynamic content and download links. If you are only interested in the 
-fact that there is a new relase of your favorite software and not that the 
+fact that there is a new release of your favorite software and not that the 
 author of the page as updated some text on the page, this feature is very handy.
+
+Another problem with comparing web pages is that often time javascript and the
+like will change and you probably do not care about that. The "htmlonly" watch 
+type will ignore all of the non html only components of a web page during the 
+comparison. 
+
+Some pages use hit counters or will have hidden input tags that are populated
+on the back end and have a different value on each evocation of the page. This
+causes the script to register and report a change every time it runs. You can 
+get past this by using the ignore-regex option, specifying a pattern that should
+be ignored when the compare is done. 
 
 Installation
 

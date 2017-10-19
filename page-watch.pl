@@ -41,6 +41,13 @@
 # 10/17/2014
 # - Added the htmlonly watch type that will only look at html, ignoring scrpts and styles
 # - Added error reporting on URLs that were not successfully retrieved
+#
+# 10/20/2014
+# - Added option to diff command to ignore all whitepace
+#
+# 10/29/2014
+# - Added option in cf file to ignore strings specified by a regular expression. This is
+#   handy for eliminating pge hit counter.
 #------------------------------------------------------------------------------------------
 
 use WWW::Mechanize;
@@ -51,10 +58,11 @@ use strict;
 #====================================================================================================
 # Subroutine prototypes
 #====================================================================================================
-sub write_page_data($);
+sub write_page_data($$);
 sub get_headers($);
 sub loadConfiguration($);
 sub removeCode($);
+sub removeIgnoredStrings($$);
 
 #====================================================================================================
 # Global Variables
@@ -63,6 +71,7 @@ sub removeCode($);
 my %pageList     = ();  # List of pages to watch. Will contain URL's
 my %watchTypeList= ();  # Keyed the same as pageList, type of comparison to make
 my %notifyList   = ();  # Keyed the same as pageList, Who to notify
+my %ignoreList   = ();  # Keyed the same as pageList, What strings to ignore
 my $emailFrom;          # Who the notificationemail should appear to be from
 my $smtpServer;         # The name of the SMPT server
 
@@ -153,9 +162,9 @@ while (($nick,$page) = each(%pageList))
       {
          print "Checking $nick against currently cached page information... ";
 
-         write_page_data($testFile);
+         write_page_data($nick,$testFile);
 
-         $diff = `diff $testFile $cacheFile`;
+         $diff = `diff --ignore-all-space --ignore-blank-lines $testFile $cacheFile`;
          if ($? == 0)
          {
             print "Files are identical\n";
@@ -198,7 +207,7 @@ while (($nick,$page) = each(%pageList))
       #================================================
       else
       {
-         write_page_data($cacheFile);
+         write_page_data($nick,$cacheFile);
 
          print "Successfully performed initial cache of $nick web page\n";
       }
@@ -223,11 +232,12 @@ while (($nick,$page) = each(%pageList))
 #====================================================================================================
 # Subroutine to write a file that will conatins either the whole page or just the links
 #====================================================================================================
-sub write_page_data($)
+sub write_page_data($$)
 {
    #================================================
    # Get the filename from parm and open it for output
    #================================================
+   my $nick     = shift;   # The nick name of the page
    my $fileName = shift;   # The name of the file to write
    my $watchType;          # The type of comparison to be done
    my $link;               # Reference to a WWW::Link object
@@ -270,7 +280,10 @@ sub write_page_data($)
       #================================================
       foreach $url (sort(keys(%urlList)))
       {
-         print DAT "$url\n";
+         if (defined($ignoreList{$nick}))
+            {print DAT removeIgnoredStrings($url,$ignoreList{$nick})."\n";}
+         else
+            {print DAT "$url\n"};
       }
    }
    #================================================
@@ -278,14 +291,20 @@ sub write_page_data($)
    #================================================
    elsif ($watchType =~ /htmlonly/i)
    {
-      print  DAT removeCode($mech->content);
+      if (defined($ignoreList{$nick}))
+         {print DAT removeIgnoredStrings(removeCode($mech->content),$ignoreList{$nick})."\n";}
+      else
+         {print DAT removeCode($mech->content);}
    }
    #================================================
    # Doing the whole page? That is just too easy
    #================================================
    elsif ($watchType =~ /page/i)
    {
-      print  DAT $mech->content;
+         if (defined($ignoreList{$nick}))
+            {print DAT removeIgnoredStrings($mech->content,$ignoreList{$nick});}
+         else
+            {print  DAT $mech->content;}
    }
    #================================================
    # Doing just the headers? That is easy too!
@@ -337,10 +356,7 @@ sub loadConfiguration($)
    # Working Variables
    #------------------------------------------
    my @pwConf;
-   my $pageName      = '';
-   my $pageAddress   = '';
-   my $pageWatchType = '';
-   my $pageNotify    = '';
+   my $nick          = '';
    my $line          = '';
    my $option        = '';
    my $value         = '';
@@ -360,38 +376,39 @@ sub loadConfiguration($)
       #--------------------------------------------------------------------------------
       if ($line =~ /^\s*$/)
       {
-         $pageName      = '';
-         $pageAddress   = '';
-         $pageWatchType = '';
-         $pageNotify    = '';
+         $nick = '';
       }
       #--------------------------------------------------------------------------------
       # A Page definition
       #--------------------------------------------------------------------------------
       elsif ($line =~ /^(default)/i or $line =~ /^page\s*=\s*(\S+)/i)
       {
-         $pageName=$1;
+         $nick = $1;
       }
-      elsif ($pageName ne '' and $line =~ /^\s+(\S+)\s*=\s*(\S+)/)
+      elsif ($nick ne '' and $line =~ /^\s+(\S+)\s*=\s*(\S+)/)
       {
          $option = $1;
          $value  = $2;
 
          if ($option =~ /address/i)
          {
-            $pageList{$pageName}=$value;
+            $pageList{$nick}=$value;
          }
          elsif ($option =~ /watchType/i)
          {
-            $watchTypeList{$pageName}=$value;
+            $watchTypeList{$nick}=$value;
          }
          elsif ($option =~ /notify/i)
          {
-            $notifyList{$pageName} = $value;
+            $notifyList{$nick} = $value;
+         }
+         elsif ($option =~ /ignore-regex/i)
+         {
+            $ignoreList{$nick} = $value;
          }
          else
          {
-            die "Unrecognized option: $option specified for page: $pageName\n";
+            die "Unrecognized option: $option specified for page: $nick\n";
          }
       }
       #--------------------------------------------------------------------------------
@@ -436,7 +453,7 @@ sub loadConfiguration($)
 # Subroutine to remove script and style code
 #===================================================================================
 
-sub removeCode($) 
+sub removeCode($)
 {
 my $html = shift;
 
@@ -446,4 +463,16 @@ my $html = shift;
    $scrubber->style(0);   ## no style
 
    return $scrubber->scrub($html)
+}
+#===================================================================================
+# Subroutine to mask specified strings so that they do not play a part in the
+# comparison
+#===================================================================================
+sub removeIgnoredStrings($$)
+{
+   my $str = shift;
+   my $pat = shift;
+
+   $str =~ s/$pat/**EXPLICITLY IGNORED**/g;
+   return $str;
 }
